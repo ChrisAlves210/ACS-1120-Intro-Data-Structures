@@ -1,0 +1,3 @@
+- [**Schedule**](ReadMe.md)
+- [**Tweet Generator Tutorial**](https://bit.ly/tutorial-tweet-generator) <!-- - [**Quiz Study Guides**](StudyGuides.md) --> 
+- [**Course Recordings**](https://bit.ly/droxey-vids)
