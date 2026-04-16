@@ -2,11 +2,135 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tweet Generator</title>
+  <title>Stochastic Sampler</title>
+  <style>
+    :root {
+      --bg-1: #f7f4e8;
+      --bg-2: #d9e7ea;
+      --ink: #1f2a30;
+      --accent: #0a7a73;
+      --panel: rgba(255, 255, 255, 0.82);
+      --border: rgba(31, 42, 48, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 20% 15%, #fff6d2 0%, transparent 45%),
+                  radial-gradient(circle at 80% 85%, #cce7dd 0%, transparent 42%),
+                  linear-gradient(150deg, var(--bg-1), var(--bg-2));
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+    }
+
+    main {
+      width: min(760px, 100%);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(31, 42, 48, 0.12);
+      padding: 1.5rem;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: clamp(1.45rem, 3.5vw, 2.2rem);
+      line-height: 1.15;
+    }
+
+    p {
+      margin: 0.5rem 0 1rem;
+    }
+
+    blockquote {
+      margin: 1rem 0 1.25rem;
+      padding: 1rem 1.2rem;
+      border-left: 6px solid var(--accent);
+      background: rgba(10, 122, 115, 0.08);
+      font-size: clamp(1.2rem, 3.2vw, 1.7rem);
+      line-height: 1.4;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 0.75rem;
+    }
+
+    label {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.65rem;
+    }
+
+    input,
+    select {
+      background: white;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      color: white;
+      background: var(--accent);
+      padding: 0.58rem 1rem;
+      font-weight: 700;
+    }
+
+    .meta {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 560px) {
+      form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
 </head>
 <body>
-    <blockquote>TODO: Replace this text with the sentence you generated!</blockquote>
+  <main>
+    <h1>Random Text Generator</h1>
+    <p>Each refresh produces fresh output from your histogram.</p>
+
+    <blockquote>{{ generated_text }}</blockquote>
+
+    <form method="get" action="/">
+      <div>
+        <label for="num">Words</label><br>
+        <input id="num" name="num" type="number" min="1" max="50" value="{{ num }}">
+      </div>
+      <div>
+        <label for="mode">Mode</label><br>
+        <select id="mode" name="mode">
+          <option value="weighted" {% if mode == "weighted" %}selected{% endif %}>Weighted (frequency)</option>
+          <option value="uniform" {% if mode == "uniform" %}selected{% endif %}>Uniform (equal per word)</option>
+        </select>
+      </div>
+      <button type="submit">Generate</button>
+    </form>
+
+    <p class="meta">Corpus source: {{ corpus_source }}</p>
+  </main>
 </body>
 </html>

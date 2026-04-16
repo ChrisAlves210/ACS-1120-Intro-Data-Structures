@@ -1,17 +1,54 @@
-"""Main script, uses other modules to generate sentences."""
-from flask import Flask
+"""Main script, uses other modules to generate sample text in a web app."""
+
+from pathlib import Path
+
+from flask import Flask, render_template, request
+
+from histogram import histogram, sample_uniform, sample_weighted
 
 
 app = Flask(__name__)
 
-# TODO: Initialize your histogram, hash table, or markov chain here.
-# Any code placed here will run only once, when the server starts.
+# Build histogram once when the server starts.
+CORPUS_PATH = Path(__file__).resolve().parent / "data" / "corpus.txt"
+FALLBACK_TEXT = "one fish two fish red fish blue fish"
+
+if CORPUS_PATH.exists():
+    WORD_HISTOGRAM = histogram(str(CORPUS_PATH))
+else:
+    WORD_HISTOGRAM = histogram(FALLBACK_TEXT)
+
+
+def generate_words(num_words: int, mode: str) -> list[str]:
+    """Generate words from the global histogram using the requested mode."""
+    sampler = sample_uniform if mode == "uniform" else sample_weighted
+    return [sampler(WORD_HISTOGRAM) for _ in range(num_words)]
 
 
 @app.route("/")
 def home():
-    """Route that returns a web page containing the generated text."""
-    return "<p>TODO: Return a word here!</p>"
+    """Render home page with newly sampled words on each request."""
+    mode = request.args.get("mode", "weighted").lower()
+    if mode not in {"uniform", "weighted"}:
+        mode = "weighted"
+
+    num_arg = request.args.get("num", "1")
+    try:
+        num = int(num_arg)
+    except ValueError:
+        num = 1
+    num = max(1, min(num, 50))
+
+    words = generate_words(num_words=num, mode=mode)
+    generated_text = " ".join(words)
+
+    return render_template(
+        "index.html",
+        generated_text=generated_text,
+        mode=mode,
+        num=num,
+        corpus_source=str(CORPUS_PATH) if CORPUS_PATH.exists() else "fallback text",
+    )
 
 
 if __name__ == "__main__":
