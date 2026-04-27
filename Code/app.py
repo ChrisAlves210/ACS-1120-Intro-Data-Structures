@@ -5,18 +5,18 @@ from pathlib import Path
 from flask import Flask, render_template, request
 
 from histogram import histogram, sample_uniform, sample_weighted
+from markov import build_markov_chain, generate_sentence
 
 
 app = Flask(__name__)
 
-# Build histogram once when the server starts.
+# Build histogram and Markov chain once when the server starts.
 CORPUS_PATH = Path(__file__).resolve().parent / "data" / "corpus.txt"
 FALLBACK_TEXT = "one fish two fish red fish blue fish"
 
-if CORPUS_PATH.exists():
-    WORD_HISTOGRAM = histogram(str(CORPUS_PATH))
-else:
-    WORD_HISTOGRAM = histogram(FALLBACK_TEXT)
+_source = str(CORPUS_PATH) if CORPUS_PATH.exists() else FALLBACK_TEXT
+WORD_HISTOGRAM = histogram(_source)
+MARKOV_CHAIN = build_markov_chain(_source)
 
 
 def generate_words(num_words: int, mode: str) -> list[str]:
@@ -28,19 +28,22 @@ def generate_words(num_words: int, mode: str) -> list[str]:
 @app.route("/")
 def home():
     """Render home page with newly sampled words on each request."""
-    mode = request.args.get("mode", "weighted").lower()
-    if mode not in {"uniform", "weighted"}:
-        mode = "weighted"
+    mode = request.args.get("mode", "markov").lower()
+    if mode not in {"uniform", "weighted", "markov"}:
+        mode = "markov"
 
-    num_arg = request.args.get("num", "1")
+    num_arg = request.args.get("num", "15")
     try:
         num = int(num_arg)
     except ValueError:
-        num = 1
+        num = 15
     num = max(1, min(num, 50))
 
-    words = generate_words(num_words=num, mode=mode)
-    generated_text = " ".join(words)
+    if mode == "markov":
+        generated_text = generate_sentence(MARKOV_CHAIN, num_words=num)
+    else:
+        words = generate_words(num_words=num, mode=mode)
+        generated_text = " ".join(words)
 
     return render_template(
         "index.html",
