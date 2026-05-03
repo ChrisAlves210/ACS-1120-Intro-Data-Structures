@@ -2,11 +2,11 @@
 """Markov chain sentence generator.
 
 Usage:
-    python markov.py [corpus_file] [num_words]
+    python markov.py [corpus_file] [num_words] [order]
 
 Examples:
-    python markov.py data/corpus.txt 15
-    python markov.py "one fish two fish red fish blue fish" 10
+    python markov.py data/corpus.txt 15 1
+    python markov.py "one fish two fish red fish blue fish" 10 2
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from dictogram import Dictogram
+from linked_queue import Queue
 
 
 # ---------------------------------------------------------------------------
@@ -40,25 +41,37 @@ def _tokenize(text: str) -> list[str]:
 # Building the Markov chain
 # ---------------------------------------------------------------------------
 
-MarkovChain = dict[str, Dictogram]
+MarkovState = tuple[str, ...]
+MarkovChain = dict[MarkovState, Dictogram]
 
 
 def build_markov_chain(source: str, order: int = 1) -> MarkovChain:
     """Learn a Markov chain from *source* (file path or raw text).
 
-    Returns a dict mapping each token (state) to a Dictogram of the tokens
-    that follow it.  *order* is kept at 1 (bigram model) for now.
+    Returns a dict mapping each state (an n-tuple of tokens) to a Dictogram
+    of the tokens that follow it.
     """
+    if order < 1:
+        raise ValueError("order must be at least 1")
+
     text = _read_source(source)
     tokens = _tokenize(text)
+    if len(tokens) <= order:
+        return {}
 
     chain: MarkovChain = {}
-    for i in range(len(tokens) - order):
-        state = tokens[i]
-        next_token = tokens[i + order]
+
+    # Sliding context window of previous n tokens.
+    window = Queue(tokens[:order])
+    for i in range(order, len(tokens)):
+        state = tuple(window)
+        next_token = tokens[i]
         if state not in chain:
             chain[state] = Dictogram()
         chain[state].add_count(next_token)
+
+        window.dequeue()
+        window.enqueue(next_token)
 
     return chain
 
@@ -67,17 +80,21 @@ def build_markov_chain(source: str, order: int = 1) -> MarkovChain:
 # Random walk / sentence generation
 # ---------------------------------------------------------------------------
 
-def _random_start(chain: MarkovChain) -> str:
-    """Pick a starting word.
-
-    Prefer words that could plausibly start a sentence (i.e. words that
-    follow sentence-ending punctuation in the corpus, or just a random word
-    when no such preference is available).
-    """
+def _random_start(chain: MarkovChain) -> MarkovState:
+    """Pick a random starting state from learned states."""
     return random.choice(list(chain.keys()))
 
 
-def generate_sentence(chain: MarkovChain, num_words: int = 15, start: str | None = None) -> str:
+def _chain_order(chain: MarkovChain) -> int:
+    """Infer model order from any existing state key."""
+    return len(next(iter(chain)))
+
+
+def generate_sentence(
+    chain: MarkovChain,
+    num_words: int = 15,
+    start: str | MarkovState | None = None,
+) -> str:
     """Walk the Markov chain and return a sentence of *num_words* words.
 
     If the walk gets stuck (reaches a state with no outgoing transitions),
@@ -86,17 +103,37 @@ def generate_sentence(chain: MarkovChain, num_words: int = 15, start: str | None
     """
     if not chain:
         raise ValueError("Markov chain is empty")
+    if num_words <= 0:
+        return ""
 
-    word = start if (start and start in chain) else _random_start(chain)
-    words: list[str] = [word]
+    order = _chain_order(chain)
 
-    for _ in range(num_words - 1):
-        if word in chain:
-            word = chain[word].sample()
+    if isinstance(start, tuple) and len(start) == order and start in chain:
+        state = start
+    elif isinstance(start, str) and order == 1 and (start,) in chain:
+        state = (start,)
+    else:
+        state = _random_start(chain)
+
+    words: list[str] = list(state)
+    if len(words) > num_words:
+        words = words[:num_words]
+
+    window = Queue(state)
+
+    while len(words) < num_words:
+        current_state = tuple(window)
+        if current_state in chain:
+            next_word = chain[current_state].sample()
+            if len(window) == order:
+                window.dequeue()
+            window.enqueue(next_word)
+            words.append(next_word)
         else:
             # Stuck (terminal state) — restart from a random state
-            word = _random_start(chain)
-        words.append(word)
+            restart_state = _random_start(chain)
+            window = Queue(restart_state)
+            words.append(restart_state[-1])
 
     sentence = " ".join(words)
     # Capitalise first letter and add a period if needed
@@ -120,14 +157,20 @@ if __name__ == "__main__":
         source = "data/corpus.txt"
 
     num_words = 15
+    order = 1
     if len(args) >= 2:
         try:
             num_words = int(args[1])
         except ValueError:
             pass
+    if len(args) >= 3:
+        try:
+            order = int(args[2])
+        except ValueError:
+            pass
 
-    print("Building Markov chain …", file=sys.stderr)
-    chain = build_markov_chain(source)
+    print(f"Building order-{order} Markov chain ...", file=sys.stderr)
+    chain = build_markov_chain(source, order=order)
     print(f"Chain has {len(chain)} states.", file=sys.stderr)
 
     for _ in range(5):

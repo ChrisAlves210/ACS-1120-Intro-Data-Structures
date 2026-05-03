@@ -10,7 +10,7 @@ class Node(object):
 
     def __repr__(self):
         """Return a string representation of this node."""
-        return f'Node({self.data})'
+        return f'Node({self.data!r})'
 
 
 class LinkedList:
@@ -19,6 +19,7 @@ class LinkedList:
         """Initialize this linked list and append the given items, if any."""
         self.head = None  # First node
         self.tail = None  # Last node
+        self.size = 0  # Number of nodes in list
         # Append given items
         if items is not None:
             for item in items:
@@ -26,62 +27,111 @@ class LinkedList:
 
     def __repr__(self):
         """Return a string representation of this linked list."""
-        ll_str = ""
-        for item in self.items():
-            ll_str += f'({item}) -> '
-        return ll_str
+        return f'LinkedList({self.items()})'
+
+    def __iter__(self):
+        """Iterate over all items in this linked list from head to tail."""
+        node = self.head
+        while node is not None:
+            yield node.data
+            node = node.next
 
     def items(self):
         """Return a list (dynamic array) of all items in this linked list.
         Best and worst case running time: O(n) for n items in the list (length)
         because we always need to loop through all n nodes to get each item."""
-        items = []  # O(1) time to create empty list
-        # Start at head node
-        node = self.head  # O(1) time to assign new variable
-        # Loop until node is None, which is one node too far past tail
-        while node is not None:  # Always n iterations because no early return
-            items.append(node.data)  # O(1) time (on average) to append to list
-            # Skip to next node to advance forward in linked list
-            node = node.next  # O(1) time to reassign variable
-        # Now list contains items from all nodes
-        return items  # O(1) time to return list
+        return list(self)
 
     def is_empty(self):
         """Return a boolean indicating whether this linked list is empty."""
         return self.head is None
 
     def length(self):
-        """Return the length of this linked list by traversing its nodes.
-        TODO: Running time: O(n) Why and under what conditions?"""
-        # TODO: Loop through all nodes and count one for each
+        """Return the length of this linked list in O(1) time.
+
+        The list maintains a `size` counter that is updated by mutating methods,
+        so no traversal is required when checking length.
+        """
+        return self.size
 
     def append(self, item):
         """Insert the given item at the tail of this linked list.
-        TODO: Running time: O(???) Why and under what conditions?"""
-        # TODO: Create new node to hold given item
-        # TODO: If self.is_empty() == True set the head and the tail to the new node
-        # TODO: Else append node after tail
+        Running time: O(1), as tail is tracked directly."""
+        new_node = Node(item)
+        if self.is_empty():
+            self.head = new_node
+            self.tail = new_node
+        else:
+            self.tail.next = new_node
+            self.tail = new_node
+        self.size += 1
 
     def prepend(self, item):
         """Insert the given item at the head of this linked list.
-        TODO: Running time: O(???) Why and under what conditions?"""
-        # TODO: Create new node to hold given item
-        # TODO: Prepend node before head, if it exists
+        Running time: O(1), as head is tracked directly."""
+        new_node = Node(item)
+        if self.is_empty():
+            self.head = new_node
+            self.tail = new_node
+        else:
+            new_node.next = self.head
+            self.head = new_node
+        self.size += 1
 
     def find(self, matcher):
         """Return an item from this linked list if it is present.
-        TODO: Best case running time: O(???) Why and under what conditions?
-        TODO: Worst case running time: O(???) Why and under what conditions?"""
-        # TODO: Loop through all nodes to find item, if present return True otherwise False
+        Best case running time: O(1) when head matches.
+        Worst case running time: O(n) when no node matches or tail matches."""
+        node = self.head
+        while node is not None:
+            if matcher(node.data):
+                return node.data
+            node = node.next
+        return None
 
     def delete(self, item):
         """Delete the given item from this linked list, or raise ValueError.
-        TODO: Best case running time: O(???) Why and under what conditions?
-        TODO: Worst case running time: O(???) Why and under what conditions?"""
-        # TODO: Loop through all nodes to find one whose data matches given item
-        # TODO: Update previous node to skip around node with matching data
-        # TODO: Otherwise raise error to tell user that delete has failed
-        # Hint: raise ValueError('Item not found: {}'.format(item))
+        Best case running time: O(1) when deleting head.
+        Worst case running time: O(n) when item is in tail or not present."""
+        prev = None
+        node = self.head
+
+        while node is not None:
+            if node.data == item:
+                if prev is None:
+                    # Deleting head
+                    self.head = node.next
+                else:
+                    prev.next = node.next
+
+                # If deleting tail, move tail back to prev
+                if node is self.tail:
+                    self.tail = prev
+
+                # If list is now empty, keep both pointers consistent
+                if self.head is None:
+                    self.tail = None
+
+                self.size -= 1
+
+                return
+
+            prev = node
+            node = node.next
+
+        raise ValueError('Item not found: {}'.format(item))
+
+    def replace(self, old_item, new_item):
+        """Replace first occurrence of old_item with new_item in place.
+
+        If old_item is not found, this method makes no changes.
+        """
+        node = self.head
+        while node is not None:
+            if node.data == old_item:
+                node.data = new_item
+                return
+            node = node.next
 
 
 def test_linked_list():
@@ -98,7 +148,7 @@ def test_linked_list():
     print('length: {}'.format(ll.length()))
 
     # Enable this after implementing delete method
-    delete_implemented = False
+    delete_implemented = True
     if delete_implemented:
         print('\nTesting delete:')
         for item in ['B', 'C', 'A']:

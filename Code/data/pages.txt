@@ -1,0 +1,4 @@
+# Add one URL per line. Blank lines and lines starting with # are ignored.
+# Example:
+# https://en.wikipedia.org/wiki/Twitterbot
+# https://www.example.com/article-two
