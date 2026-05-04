@@ -16,6 +16,7 @@ import re
 import sys
 from pathlib import Path
 
+from cleanup import clean_text
 from dictogram import Dictogram
 from linked_queue import Queue
 
@@ -33,7 +34,8 @@ def _read_source(source: str) -> str:
 
 
 def _tokenize(text: str) -> list[str]:
-    """Split text into lowercased word tokens."""
+    """Clean and split text into lowercased word tokens."""
+    text = clean_text(text)
     return re.findall(r"\b[\w']+\b", text.lower())
 
 
