@@ -25,10 +25,10 @@ class Listogram(list):
         if index is not None:
             current_word, current_count = self[index]
             new_count = current_count + count
-            self[index] = (current_word, new_count)
+            self[index] = [current_word, new_count]
         else:
-            # New word type; append a new (word, count) pair
-            self.append((word, count))
+            # New word type; append a new [word, count] list
+            self.append([word, count])
             self.types += 1
         # We've added `count` tokens regardless of branch
         self.tokens += count
